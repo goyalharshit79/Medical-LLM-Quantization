@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Environments
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Model files (too large for git)
+*.bin
+*.safetensors
+*.gguf
+*.pt
+*.pth
+models/
+
+# Data cache
+data/cache/
+.cache/
+
+# HuggingFace
+hf_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Secrets
+.env
+*.key
+
+# Results data (keep tables/figures, not raw dumps)
+results/*.json
+results/*.pkl
+!results/tables/
+!results/figures/

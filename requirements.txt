@@ -1,0 +1,16 @@
+unsloth
+transformers>=5.5.0
+peft>=0.9.0
+bitsandbytes>=0.43.0
+auto-gptq>=0.7.0
+autoawq>=0.2.0
+datasets
+accelerate
+torch>=2.1.0
+trl
+sentencepiece
+protobuf
+scipy
+matplotlib
+pandas
+tqdm

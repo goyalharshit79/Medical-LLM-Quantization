@@ -1,0 +1,53 @@
+# Post-Training Quantization Configurations
+# Each method will be applied to the merged fine-tuned Gemma-4-E4B-Med model
+
+gptq:
+  variants:
+    - name: "gptq-8bit"
+      bits: 8
+      group_size: 128
+      desc_act: true
+      dataset: "medical"    # Use medical calibration data
+      num_samples: 128
+    - name: "gptq-4bit"
+      bits: 4
+      group_size: 128
+      desc_act: true
+      dataset: "medical"
+      num_samples: 128
+    - name: "gptq-3bit"
+      bits: 3
+      group_size: 128
+      desc_act: true
+      dataset: "medical"
+      num_samples: 128
+
+awq:
+  variants:
+    - name: "awq-4bit"
+      w_bit: 4
+      q_group_size: 128
+      zero_point: true
+      version: "GEMM"
+
+bnb:
+  variants:
+    - name: "bnb-nf4"
+      load_in_4bit: true
+      bnb_4bit_quant_type: "nf4"
+      bnb_4bit_compute_dtype: "bfloat16"
+      bnb_4bit_use_double_quant: true
+    - name: "bnb-int8"
+      load_in_8bit: true
+
+# Evaluation settings (shared across all variants)
+evaluation:
+  perplexity_datasets:
+    - "wikitext2"
+    - "medical"              # Custom medical text corpus
+  downstream_tasks:
+    - "pubmedqa"
+    - "medqa"
+  num_perplexity_samples: 512
+  batch_size: 4
+  max_seq_length: 512

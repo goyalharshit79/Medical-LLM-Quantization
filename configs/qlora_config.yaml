@@ -1,0 +1,57 @@
+# QLoRA Fine-tuning Configuration for Gemma 4 E4B on Medical QA
+# Fine-tuning via Unsloth FastLanguageModel
+
+model:
+  name: "google/gemma-4-E4B"          # Gemma 4 base (NOT instruction-tuned)
+  dtype: "bfloat16"                    # Native dtype for Gemma 4
+  max_seq_length: 1024                 # Training sequence length
+  load_in_4bit: true                   # QLoRA: 4-bit base quantization
+
+qlora:
+  r: 16                    # LoRA rank
+  lora_alpha: 32           # Scaling factor (typically 2x rank)
+  lora_dropout: 0.05
+  target_modules:          # Attention + FFN layers (Unsloth recommendation)
+    - "q_proj"
+    - "k_proj"
+    - "v_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+    - "down_proj"
+  bias: "none"
+  task_type: "CAUSAL_LM"
+  use_gradient_checkpointing: "unsloth"   # Unsloth-optimized checkpointing
+
+training:
+  num_epochs: 2
+  per_device_train_batch_size: 4
+  gradient_accumulation_steps: 4   # Effective batch size = 16
+  learning_rate: 2.0e-4
+  warmup_ratio: 0.03
+  weight_decay: 0.01
+  lr_scheduler_type: "cosine"
+  logging_steps: 10
+  save_steps: 100
+  eval_steps: 100
+  optim: "adamw_8bit"              # 8-bit Adam for memory efficiency
+  bf16: true                       # Match model's native dtype
+
+data:
+  train_dataset: "pubmedqa+medqa"  # Combined training data
+  eval_datasets:
+    - "pubmedqa"
+    - "medqa"
+  train_split: "train"
+  eval_split: "validation"
+  max_train_samples: null          # null = use all
+  max_eval_samples: 500
+
+prompt_format:
+  # Gemma 4 turn tokens
+  turn_start: "<|turn>"
+  turn_end: "<turn|>"
+  roles:
+    - "user"
+    - "model"
+    - "system"
