@@ -24,25 +24,28 @@ Answer with yes, no, or maybe and explain your reasoning.<turn|>
 {answer}<turn|>"""
 
 
-def load_pubmedqa(split="train"):
-    """Load PubMedQA dataset (labeled subset)."""
-    ds = load_dataset("bigbio/pubmed_qa", "pubmed_qa_labeled_fold0_source", split=split)
+def load_pubmedqa():
+    """Load PubMedQA dataset (labeled subset). Only has a 'train' split (1000 examples)."""
+    ds = load_dataset("pubmed_qa", "pqa_labeled")
     return ds
 
 
-def load_medqa(split="train"):
-    """Load MedQA (USMLE-style) dataset."""
-    ds = load_dataset("bigbio/med_qa", "med_qa_en_4options_source", split=split)
+def load_medqa():
+    """Load MedQA (USMLE-style) dataset. Has 'train' and 'test' splits."""
+    ds = load_dataset("GBaker/MedQA-USMLE-4-options")
     return ds
 
 
 def format_pubmedqa_for_training(example):
     """Format a PubMedQA example into Gemma 4 instruction format."""
-    context = " ".join(example["CONTEXTS"]) if isinstance(example["CONTEXTS"], list) else example["CONTEXTS"]
-    question = example["QUESTION"]
+    # Standard pubmed_qa uses nested context dict with lowercase keys
+    ctx_data = example.get("context", {})
+    contexts = ctx_data.get("contexts", [])
+    context = " ".join(contexts) if isinstance(contexts, list) else str(contexts)
+    question = example["question"]
 
     # Long answer + final decision
-    long_answer = example.get("LONG_ANSWER", "")
+    long_answer = example.get("long_answer", "")
     final_decision = example.get("final_decision", "")
 
     if long_answer and final_decision:
@@ -94,10 +97,12 @@ def prepare_calibration_data(num_samples=128, max_length=512, tokenizer=None):
     Returns a list of text strings (or tokenized if tokenizer provided).
     Used by GPTQ and AWQ during quantization.
     """
-    ds = load_pubmedqa("train")
+    ds = load_pubmedqa()
     texts = []
-    for example in ds:
-        context = " ".join(example["CONTEXTS"]) if isinstance(example["CONTEXTS"], list) else example["CONTEXTS"]
+    for example in ds["train"]:
+        ctx_data = example.get("context", {})
+        contexts = ctx_data.get("contexts", [])
+        context = " ".join(contexts) if isinstance(contexts, list) else str(contexts)
         texts.append(context)
         if len(texts) >= num_samples:
             break
@@ -115,30 +120,29 @@ def prepare_all_datasets(output_dir="data"):
     output_dir.mkdir(parents=True, exist_ok=True)
 
     print("Loading PubMedQA...")
-    pubmedqa_train = load_pubmedqa("train")
-    pubmedqa_val = load_pubmedqa("validation")
-
-    print(f"  Train: {len(pubmedqa_train)} examples")
-    print(f"  Val:   {len(pubmedqa_val)} examples")
+    pubmedqa = load_pubmedqa()  # Only has 'train' split (1000 examples)
+    pubmedqa_train = pubmedqa["train"]
+    print(f"  Train: {len(pubmedqa_train)} examples (no separate val split)")
 
     print("Formatting PubMedQA for training...")
     pubmedqa_train_fmt = pubmedqa_train.map(format_pubmedqa_for_training, remove_columns=pubmedqa_train.column_names)
-    pubmedqa_val_fmt = pubmedqa_val.map(format_pubmedqa_for_training, remove_columns=pubmedqa_val.column_names)
 
     print("\nLoading MedQA...")
-    medqa_train = load_medqa("train")
-    medqa_val = load_medqa("validation")
+    medqa = load_medqa()  # Has 'train' and 'test' splits
+    medqa_train = medqa["train"]
+    medqa_test = medqa["test"]
 
     print(f"  Train: {len(medqa_train)} examples")
-    print(f"  Val:   {len(medqa_val)} examples")
+    print(f"  Test:  {len(medqa_test)} examples (used as validation)")
 
     print("Formatting MedQA for training...")
     medqa_train_fmt = medqa_train.map(format_medqa_for_training, remove_columns=medqa_train.column_names)
-    medqa_val_fmt = medqa_val.map(format_medqa_for_training, remove_columns=medqa_val.column_names)
+    medqa_test_fmt = medqa_test.map(format_medqa_for_training, remove_columns=medqa_test.column_names)
 
-    # Combine into single train/val
+    # Combine: PubMedQA train + MedQA train for training
+    # Use MedQA test as validation (PubMedQA has no val split)
     train_combined = concatenate_datasets([pubmedqa_train_fmt, medqa_train_fmt])
-    val_combined = concatenate_datasets([pubmedqa_val_fmt, medqa_val_fmt])
+    val_combined = medqa_test_fmt
 
     # Save formatted datasets
     train_combined.save_to_disk(str(output_dir / "train"))

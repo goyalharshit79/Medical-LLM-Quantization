@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc:*)",
+      "Bash(gh auth:*)",
+      "Bash(gh --version)",
+      "Bash(/c/Program Files/GitHub CLI/gh.exe auth:*)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" repo create Medical-LLM-Quantization --public --source=. --remote=origin --description \"Systematic evaluation of post-training quantization methods \\(GPTQ, AWQ, BnB NF4/INT8\\) on QLoRA-fine-tuned Gemma 4 E4B for medical QA\" --push)"
+    ]
+  }
+}

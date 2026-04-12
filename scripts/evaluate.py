@@ -54,17 +54,19 @@ def compute_perplexity_wikitext(model, tokenizer, device="cuda", num_samples=512
     return compute_perplexity(model, tokenizer, texts, device=device)
 
 
-def compute_perplexity_medical(model, tokenizer, device="cuda", num_samples=512):
+def compute_perplexity_medical(model, tokenizer, device="cuda", num_samples=512, batch_size=2):
     """Compute perplexity on medical text (PubMedQA contexts)."""
-    ds = load_dataset("bigbio/pubmed_qa", "pubmed_qa_labeled_fold0_source", split="test")
+    ds = load_dataset("pubmed_qa", "pqa_labeled", split="train")
     texts = []
     for example in ds:
-        ctx = " ".join(example["CONTEXTS"]) if isinstance(example["CONTEXTS"], list) else example["CONTEXTS"]
+        ctx_data = example.get("context", {})
+        contexts = ctx_data.get("contexts", [])
+        ctx = " ".join(contexts) if isinstance(contexts, list) else str(contexts)
         if len(ctx.strip()) > 50:
             texts.append(ctx)
         if len(texts) >= num_samples:
             break
-    return compute_perplexity(model, tokenizer, texts, device=device)
+    return compute_perplexity(model, tokenizer, texts, batch_size=batch_size, device=device)
 
 
 def evaluate_pubmedqa(model, tokenizer, device="cuda", max_samples=500):
@@ -72,7 +74,7 @@ def evaluate_pubmedqa(model, tokenizer, device="cuda", max_samples=500):
     Evaluate yes/no/maybe accuracy on PubMedQA.
     Uses Gemma 4 prompt format for evaluation.
     """
-    ds = load_dataset("bigbio/pubmed_qa", "pubmed_qa_labeled_fold0_source", split="test")
+    ds = load_dataset("pubmed_qa", "pqa_labeled", split="train")
 
     correct = 0
     total = 0
@@ -81,8 +83,10 @@ def evaluate_pubmedqa(model, tokenizer, device="cuda", max_samples=500):
         if total >= max_samples:
             break
 
-        context = " ".join(example["CONTEXTS"]) if isinstance(example["CONTEXTS"], list) else example["CONTEXTS"]
-        question = example["QUESTION"]
+        ctx_data = example.get("context", {})
+        contexts = ctx_data.get("contexts", [])
+        context = " ".join(contexts) if isinstance(contexts, list) else str(contexts)
+        question = example["question"]
         gold = example["final_decision"].lower().strip()
 
         # Gemma 4 prompt format
