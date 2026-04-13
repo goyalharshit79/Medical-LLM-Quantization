@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Systematic evaluation of post-training quantization (PTQ) methods on **Gemma 2 2B** fine-tuned for medical QA. The research question: *does QLoRA fine-tuning on medical data change which quantization method best preserves model quality?* See `PROJECT_CONTEXT.md` for the full day-by-day plan, budget, and model details -- it's the source of truth for project scope and is more detailed than `README.md`.
+Systematic evaluation of post-training quantization (PTQ) methods on **Gemma 2 2B** fine-tuned for medical QA. The research question: *does QLoRA fine-tuning on medical data change which quantization method best preserves model quality?* See `README.md` for the full project documentation including execution plan, model details, dataset info, and quantization method descriptions.
 
 Target workflow: baseline FP16 -> QLoRA fine-tune (PEFT + BnB) -> merge -> quantize via GPTQ (8/4/3-bit), AWQ (4-bit), BnB-NF4, BnB-INT8 -> benchmark all variants on perplexity (WikiText-2 + medical), PubMedQA/MedQA accuracy, VRAM, tokens/sec.
 
