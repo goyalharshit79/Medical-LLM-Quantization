@@ -1,7 +1,7 @@
 """
 Quantization runners for GPTQ, AWQ, and BitsAndBytes methods.
 Each function takes a model path and returns a quantized model.
-Compatible with Gemma 4 E4B architecture.
+Compatible with Gemma 2 2B architecture.
 """
 
 import torch
@@ -48,7 +48,7 @@ def quantize_gptq(model_path, bits=4, group_size=128, output_dir=None, num_calib
         model_path,
         quantization_config=gptq_config,
         device_map="auto",
-        torch_dtype=torch.bfloat16,
+        torch_dtype=torch.float16,
     )
 
     if output_dir:
@@ -116,7 +116,7 @@ def load_bnb_nf4(model_path):
     bnb_config = BitsAndBytesConfig(
         load_in_4bit=True,
         bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch.bfloat16,
+        bnb_4bit_compute_dtype=torch.float16,
         bnb_4bit_use_double_quant=True,
     )
 

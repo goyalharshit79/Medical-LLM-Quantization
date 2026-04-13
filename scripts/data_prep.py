@@ -1,6 +1,6 @@
 """
 Data preparation utilities for medical QA datasets.
-Downloads PubMedQA and MedQA, formats them for QLoRA fine-tuning with Gemma 4 prompt format.
+Downloads PubMedQA and MedQA, formats them for QLoRA fine-tuning with Gemma 2 prompt format.
 """
 
 import json
@@ -8,20 +8,20 @@ from pathlib import Path
 from datasets import load_dataset, Dataset, DatasetDict, concatenate_datasets
 
 
-# --- Gemma 4 Prompt Templates ---
+# --- Gemma 2 Prompt Templates ---
 
-MEDICAL_QA_TEMPLATE = """<|turn>user
-{question}<turn|>
-<|turn>model
-{answer}<turn|>"""
+MEDICAL_QA_TEMPLATE = """<start_of_turn>user
+{question}<end_of_turn>
+<start_of_turn>model
+{answer}<end_of_turn>"""
 
-PUBMEDQA_TEMPLATE = """<|turn>user
+PUBMEDQA_TEMPLATE = """<start_of_turn>user
 Context: {context}
 
 Question: {question}
-Answer with yes, no, or maybe and explain your reasoning.<turn|>
-<|turn>model
-{answer}<turn|>"""
+Answer with yes, no, or maybe and explain your reasoning.<end_of_turn>
+<start_of_turn>model
+{answer}<end_of_turn>"""
 
 
 def load_pubmedqa():
@@ -37,7 +37,7 @@ def load_medqa():
 
 
 def format_pubmedqa_for_training(example):
-    """Format a PubMedQA example into Gemma 4 instruction format."""
+    """Format a PubMedQA example into Gemma 2 instruction format."""
     # Standard pubmed_qa uses nested context dict with lowercase keys
     ctx_data = example.get("context", {})
     contexts = ctx_data.get("contexts", [])
@@ -64,7 +64,7 @@ def format_pubmedqa_for_training(example):
 
 
 def format_medqa_for_training(example):
-    """Format a MedQA example into Gemma 4 instruction format."""
+    """Format a MedQA example into Gemma 2 instruction format."""
     question = example["question"]
     options = example.get("options", {})
     answer_idx = example.get("answer_idx", "")

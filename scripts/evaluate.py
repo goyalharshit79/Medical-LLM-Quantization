@@ -1,6 +1,6 @@
 """
 Evaluation utilities: perplexity, downstream task accuracy, and metric logging.
-Compatible with Gemma 4 E4B and its prompt format.
+Compatible with Gemma 2 2B and its prompt format.
 """
 
 import json
@@ -72,7 +72,7 @@ def compute_perplexity_medical(model, tokenizer, device="cuda", num_samples=512,
 def evaluate_pubmedqa(model, tokenizer, device="cuda", max_samples=500):
     """
     Evaluate yes/no/maybe accuracy on PubMedQA.
-    Uses Gemma 4 prompt format for evaluation.
+    Uses Gemma 2 prompt format for evaluation.
     """
     ds = load_dataset("pubmed_qa", "pqa_labeled", split="train")
 
@@ -89,13 +89,13 @@ def evaluate_pubmedqa(model, tokenizer, device="cuda", max_samples=500):
         question = example["question"]
         gold = example["final_decision"].lower().strip()
 
-        # Gemma 4 prompt format
+        # Gemma 2 prompt format
         prompt = (
-            f"<|turn>user\n"
+            f"<start_of_turn>user\n"
             f"Context: {context}\n\n"
             f"Question: {question}\n"
-            f"Answer with exactly one word: yes, no, or maybe.<turn|>\n"
-            f"<|turn>model\n"
+            f"Answer with exactly one word: yes, no, or maybe.<end_of_turn>\n"
+            f"<start_of_turn>model\n"
         )
 
         inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512).to(device)
@@ -126,7 +126,7 @@ def evaluate_pubmedqa(model, tokenizer, device="cuda", max_samples=500):
 
 def measure_inference_speed(model, tokenizer, device="cuda", num_runs=20, prompt="What is diabetes?"):
     """Measure tokens/sec for generation."""
-    input_text = f"<|turn>user\n{prompt}<turn|>\n<|turn>model\n"
+    input_text = f"<start_of_turn>user\n{prompt}<end_of_turn>\n<start_of_turn>model\n"
     inputs = tokenizer(input_text, return_tensors="pt").to(device)
 
     # Warmup
