@@ -1,57 +1,68 @@
-# QLoRA Fine-tuning Configuration for Gemma 2 2B on Medical QA
-# Fine-tuning via standard PEFT + BitsAndBytes
+# QLoRA Fine-tuning Configuration for Gemma 4 E2B-it on Medical QA
+# Fine-tuning via UnSloth FastModel + LoRA (notebook 02)
 
 model:
-  name: "google/gemma-2-2b"              # Gemma 2 base (NOT instruction-tuned)
-  dtype: "float16"                        # fp16 for T4 compatibility
-  max_seq_length: 512                     # Training sequence length
-  load_in_4bit: true                      # QLoRA: 4-bit base quantization
+  name: "unsloth/gemma-4-E2B-it"          # UnSloth-optimised IT model
+  hf_name: "google/gemma-4-E2B-it"        # Canonical HuggingFace ID
+  dtype: "auto"                             # auto-detect: bfloat16 on A100/H100, float16 on T4
+  max_seq_length: 1024                      # Training sequence length (model supports 128 K)
+  load_in_4bit: true                        # QLoRA: quantised base + float LoRA adapters
+  full_finetuning: false
 
-qlora:
-  r: 16                    # LoRA rank
-  lora_alpha: 32           # Scaling factor (typically 2x rank)
-  lora_dropout: 0.05
-  target_modules:          # Attention + FFN layers
-    - "q_proj"
-    - "k_proj"
-    - "v_proj"
-    - "o_proj"
-    - "gate_proj"
-    - "up_proj"
-    - "down_proj"
+lora:
+  r: 16
+  lora_alpha: 16                    # Same as r (recommended for newer models)
+  lora_dropout: 0                   # 0 for efficiency (no regularisation via dropout)
   bias: "none"
-  task_type: "CAUSAL_LM"
-  use_gradient_checkpointing: true        # Standard gradient checkpointing
+  random_state: 3407
+  # Gemma 4 E2B is multimodal — we only train the language layers
+  finetune_vision_layers: false
+  finetune_language_layers: true
+  finetune_attention_modules: true
+  finetune_mlp_modules: true
+  # CRITICAL: use UnSloth GC, NOT gradient_checkpointing=True in TrainingArguments.
+  # Gemma 4 E2B's KV-cache sharing (num_kv_shared_layers=20) breaks if
+  # use_cache is set to False, which standard GC does.
+  use_gradient_checkpointing: "unsloth"
 
 training:
   num_epochs: 2
   per_device_train_batch_size: 2
-  gradient_accumulation_steps: 8   # Effective batch size = 16
+  gradient_accumulation_steps: 8    # Effective batch size = 16
+  # gradient_checkpointing: intentionally absent — handled by UnSloth above
   learning_rate: 2.0e-4
-  warmup_ratio: 0.03
+  warmup_steps: 50
   weight_decay: 0.01
   lr_scheduler_type: "cosine"
   logging_steps: 10
-  save_steps: 100
-  eval_steps: 100
-  optim: "adamw_8bit"              # 8-bit Adam for memory efficiency
-  fp16: true                       # fp16 for T4 compatibility
+  save_steps: 200
+  eval_steps: 200
+  eval_strategy: "steps"
+  save_total_limit: 2
+  optim: "adamw_8bit"
+  max_grad_norm: 0.3
+  fp16: "auto"                       # overridden by is_bfloat16_supported() at runtime
+  bf16: "auto"
+  report_to: "none"
 
 data:
-  train_dataset: "pubmedqa+medqa"  # Combined training data
-  eval_datasets:
-    - "pubmedqa"
-    - "medqa"
-  train_split: "train"
-  eval_split: "validation"
-  max_train_samples: null          # null = use all
-  max_eval_samples: 500
+  train_datasets:
+    - "pubmedqa"                     # 1000 examples (train split only)
+    - "medqa"                        # 10178 training examples
+  eval_dataset: "medqa_test"         # 1273 examples (MedQA test split)
+  max_train_samples: null            # null = use all
+  max_eval_samples: 1273
+  dataset_text_field: "text"
+  packing: false
+
+paths:
+  lora_output_dir: "gemma4-e2b-medical-lora"
+  merged_output_dir: "gemma4-e2b-medical-merged"
 
 prompt_format:
-  # Gemma 2 turn tokens
+  # Gemma 4 E2B uses the same turn tokens as Gemma 2
   turn_start: "<start_of_turn>"
   turn_end: "<end_of_turn>"
   roles:
     - "user"
     - "model"
-    - "system"

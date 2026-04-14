@@ -1,53 +1,65 @@
-# Post-Training Quantization Configurations
-# Each method will be applied to the merged fine-tuned Gemma-2-2B-Med model
+# Post-Training Quantization Configurations for Gemma 4 E2B Medical Model
+# Each method is applied to the merged fine-tuned model (gemma4-e2b-medical-merged)
+# produced by notebook 02.
+#
+# Architecture compatibility notes:
+#   BnB (NF4, INT8): Works — dtype-level, model-agnostic
+#   GPTQ:            Needs 'optimum' to register the 'gemma4' architecture
+#   AWQ:             Needs 'autoawq' to register the 'gemma4' architecture
+# Notebook 03 wraps GPTQ and AWQ in try/except and skips gracefully if unsupported.
+
+source_model: "gemma4-e2b-medical-merged"
 
 gptq:
   variants:
-    - name: "gptq-8bit"
+    - name: "gemma4-e2b-med-gptq-8bit"
       bits: 8
       group_size: 128
       desc_act: true
-      dataset: "medical"    # Use medical calibration data
-      num_samples: 128
-    - name: "gptq-4bit"
+      dataset: "medical"          # PubMedQA context passages as calibration
+      num_calibration_samples: 64
+    - name: "gemma4-e2b-med-gptq-4bit"
       bits: 4
       group_size: 128
       desc_act: true
       dataset: "medical"
-      num_samples: 128
-    - name: "gptq-3bit"
+      num_calibration_samples: 64
+    - name: "gemma4-e2b-med-gptq-3bit"
       bits: 3
       group_size: 128
       desc_act: true
       dataset: "medical"
-      num_samples: 128
+      num_calibration_samples: 64
 
 awq:
   variants:
-    - name: "awq-4bit"
+    - name: "gemma4-e2b-med-awq-4bit"
       w_bit: 4
       q_group_size: 128
       zero_point: true
       version: "GEMM"
+      num_calibration_samples: 64
+      save_path: "models/quantized/awq-4bit"
 
 bnb:
   variants:
-    - name: "bnb-nf4"
+    - name: "gemma4-e2b-med-bnb-nf4"
       load_in_4bit: true
       bnb_4bit_quant_type: "nf4"
       bnb_4bit_compute_dtype: "float16"
       bnb_4bit_use_double_quant: true
-    - name: "bnb-int8"
+    - name: "gemma4-e2b-med-bnb-int8"
       load_in_8bit: true
 
-# Evaluation settings (shared across all variants)
+# Evaluation settings shared across all variants
 evaluation:
   perplexity_datasets:
     - "wikitext2"
-    - "medical"              # Custom medical text corpus
+    - "medical"
   downstream_tasks:
     - "pubmedqa"
-    - "medqa"
-  num_perplexity_samples: 512
-  batch_size: 4
+  num_perplexity_samples: 256
+  pubmedqa_max_samples: 200
+  batch_size: 2
   max_seq_length: 512
+  prompt_format: "gemma4"           # <start_of_turn>user ... <end_of_turn>
